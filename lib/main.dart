@@ -32,6 +32,8 @@ class Constants {
 class MyGame extends FlameGame {
   MyGame(World world) : super(world: world);
 
+  bool tapIsAvailible = true;
+
   @override
   Future<void> onLoad() async {
     camera.viewfinder.anchor = Anchor.topLeft;
@@ -46,6 +48,8 @@ class MyGame extends FlameGame {
   }
 
   void switchPair() {
+    tapIsAvailible = false;
+
     final grid = world.children.whereType<GridComponent>().first;
     switchPairInTheGrid(grid);
 
@@ -59,8 +63,30 @@ class MyGame extends FlameGame {
     Vector2 pos1 = tile1.getPosition();
     Vector2 pos2 = tile2.getPosition();
 
-    List<List<TileComponent>> filledTiles = getFilledTiles();
-    if (filledTiles.isEmpty) {
+    List<List<TileComponent>> filledTilesMatrix = getFilledTilesMatrix();
+    List<TileComponent> filledTiles =
+        filledTilesMatrix.expand((x) => x).toSet().toList();
+
+    for (int i = 0; i < filledTiles.length; i++) {
+      TileComponent tile = filledTiles[i];
+      tile.add(
+        SequenceEffect([
+          SizeEffect.to(
+            Vector2.zero(),
+            EffectController(
+              duration: Constants.resizeDuration,
+              onMax: () => tile.changeColor(),
+              startDelay: Constants.switchDuration,
+            ),
+          ),
+          SizeEffect.to(
+            Vector2.all(tile.tileSize),
+            EffectController(duration: Constants.resizeDuration),
+          ),
+        ]),
+      );
+    }
+    if (filledTilesMatrix.isEmpty) {
       switchPairInTheGrid(grid);
     }
 
@@ -71,12 +97,15 @@ class MyGame extends FlameGame {
           pos2,
           EffectController(
             duration: Constants.switchDuration,
-            alternate: filledTiles.isEmpty ? true : false,
+            alternate: filledTilesMatrix.isEmpty ? true : false,
           ),
         ),
         SizeEffect.to(
           Vector2.all(tile2.tileSize),
-          EffectController(duration: Constants.resizeDuration),
+          EffectController(
+            duration: Constants.resizeDuration,
+            onMax: () => tapIsAvailible = true,
+          ),
         ),
       ]),
     );
@@ -87,7 +116,7 @@ class MyGame extends FlameGame {
           pos1,
           EffectController(
             duration: Constants.switchDuration,
-            alternate: filledTiles.isEmpty ? true : false,
+            alternate: filledTilesMatrix.isEmpty ? true : false,
           ),
         ),
         SizeEffect.to(
@@ -116,7 +145,7 @@ class MyGame extends FlameGame {
   }
 
   // Возвращает список удаляемых блоков
-  List<List<TileComponent>> getFilledTiles() {
+  List<List<TileComponent>> getFilledTilesMatrix() {
     List<List<TileComponent>> transposedMatrix = List.generate(
       Constants.columnCount,
       (_) => [],
@@ -272,14 +301,19 @@ class TileComponent extends RectangleComponent
       column * (tileSize + Constants.spaceBetweenTiles) + tileSize / 2,
       row * (tileSize + Constants.spaceBetweenTiles) + tileSize / 2,
     );
+    paint = Paint();
+    changeColor();
+  }
+
+  void changeColor() {
     color = MyColors.colorList[random.nextInt(MyColors.lenght)];
-    paint = Paint()..color = color;
+    paint.color = color;
   }
 
   @override
   void onTapDown(TapDownEvent event) {
     var pair = gameRef.pair;
-    if (!isTapped) {
+    if (!isTapped && gameRef.tapIsAvailible) {
       if (pair.isNotEmpty) {
         dynamic firstElement = pair[0];
         int verticalDistance = (firstElement[0] - row).abs();
