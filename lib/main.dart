@@ -6,16 +6,17 @@ import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class MyColors {
   static Color red = Colors.red;
   static Color yellow = Colors.yellow;
   static Color green = Colors.green;
-  static Color brown = Colors.brown;
+  static Color pink = Colors.pink;
   static Color purple = Colors.purple;
 
-  static final List<Color> colorList = [red, yellow, green, brown, purple];
+  static final List<Color> colorList = [red, yellow, green, pink, purple];
   static final lenght = colorList.length;
 }
 
@@ -46,6 +47,7 @@ class MyGame extends FlameGame {
 
   void switchPair() {
     final grid = world.children.whereType<GridComponent>().first;
+    switchPairInTheGrid(grid);
 
     var first = pair[0];
     var second = pair[1];
@@ -57,8 +59,10 @@ class MyGame extends FlameGame {
     Vector2 pos1 = tile1.getPosition();
     Vector2 pos2 = tile2.getPosition();
 
-    List<List<int>> filledBlocks = getFilledBlocks();
-    print("empty list: ${filledBlocks.isEmpty}");
+    List<List<TileComponent>> filledTiles = getFilledTiles();
+    if (filledTiles.isEmpty) {
+      switchPairInTheGrid(grid);
+    }
 
     // Перемещаем тайлы
     tile1.add(
@@ -67,7 +71,7 @@ class MyGame extends FlameGame {
           pos2,
           EffectController(
             duration: Constants.switchDuration,
-            alternate: filledBlocks.isEmpty ? true : false,
+            alternate: filledTiles.isEmpty ? true : false,
           ),
         ),
         SizeEffect.to(
@@ -83,7 +87,7 @@ class MyGame extends FlameGame {
           pos1,
           EffectController(
             duration: Constants.switchDuration,
-            alternate: filledBlocks.isEmpty ? true : false,
+            alternate: filledTiles.isEmpty ? true : false,
           ),
         ),
         SizeEffect.to(
@@ -93,7 +97,7 @@ class MyGame extends FlameGame {
       ]),
     );
 
-    pair = [];
+    pair.clear();
   }
 
   void resetPair() {
@@ -108,12 +112,79 @@ class MyGame extends FlameGame {
         ),
       );
     }
-    pair = [];
+    pair.clear();
   }
 
   // Возвращает список удаляемых блоков
-  List<List<int>> getFilledBlocks() {
-    return [];
+  List<List<TileComponent>> getFilledTiles() {
+    List<List<TileComponent>> transposedMatrix = List.generate(
+      Constants.columnCount,
+      (_) => [],
+    );
+    final grid = world.children.whereType<GridComponent>().first;
+
+    List<List<TileComponent>> filledRows = [];
+    List<TileComponent> filledRow = [];
+    // проверяем 3 в ряд в строках, попутно созадавая транспонированную матрицу
+    for (int i = 0; i < Constants.rowCount; i++) {
+      for (int j = 0; j < Constants.columnCount; j++) {
+        TileComponent curElement = grid.tiles[i][j];
+
+        if (filledRow.isEmpty || filledRow.last.color == curElement.color) {
+          filledRow.add(curElement);
+        } else {
+          if (filledRow.length >= 3) {
+            filledRows.add(List.from(filledRow));
+          }
+          filledRow.clear();
+          filledRow.add(curElement);
+        }
+        // доббавляем элемент в транспонированную матрицу
+        transposedMatrix[j].add(curElement);
+      }
+
+      if (filledRow.length >= 3) {
+        filledRows.add(List.from(filledRow));
+      }
+      filledRow.clear();
+    }
+    for (int i = 0; i < Constants.columnCount; i++) {
+      for (int j = 0; j < Constants.rowCount; j++) {
+        TileComponent curElement = transposedMatrix[i][j];
+
+        if (filledRow.isEmpty || filledRow.last.color == curElement.color) {
+          filledRow.add(curElement);
+        } else {
+          if (filledRow.length >= 3) {
+            filledRows.add(List.from(filledRow));
+          }
+          filledRow.clear();
+          filledRow.add(curElement);
+        }
+      }
+      if (filledRow.length >= 3) {
+        filledRows.add(List.from(filledRow));
+      }
+      filledRow.clear();
+    }
+    return filledRows;
+  }
+
+  void switchPairInTheGrid(GridComponent grid) {
+    var first = pair[0];
+    var second = pair[1];
+
+    var tile1 = grid.tiles[first[0]][first[1]];
+    var tile2 = grid.tiles[second[0]][second[1]];
+
+    grid.tiles[first[0]][first[1]] = tile2;
+    grid.tiles[second[0]][second[1]] = tile1;
+
+    grid.tiles[first[0]][first[1]].row = first[0];
+    grid.tiles[first[0]][first[1]].column = first[1];
+
+    grid.tiles[second[0]][second[1]].row = second[0];
+    grid.tiles[second[0]][second[1]].column = second[1];
   }
 }
 
@@ -182,6 +253,7 @@ class TileComponent extends RectangleComponent
   double tileSize;
   Random random;
   bool isTapped = false;
+  late Color color;
 
   TileComponent({
     required this.row,
@@ -200,8 +272,8 @@ class TileComponent extends RectangleComponent
       column * (tileSize + Constants.spaceBetweenTiles) + tileSize / 2,
       row * (tileSize + Constants.spaceBetweenTiles) + tileSize / 2,
     );
-    paint =
-        Paint()..color = MyColors.colorList[random.nextInt(MyColors.lenght)];
+    color = MyColors.colorList[random.nextInt(MyColors.lenght)];
+    paint = Paint()..color = color;
   }
 
   @override
@@ -209,13 +281,16 @@ class TileComponent extends RectangleComponent
     var pair = gameRef.pair;
     if (!isTapped) {
       if (pair.isNotEmpty) {
-        int verticalDistance = (pair[0][0] - row).abs();
-        int horisontalDistance = (pair[0][1] - column).abs();
+        dynamic firstElement = pair[0];
+        int verticalDistance = (firstElement[0] - row).abs();
+        int horisontalDistance = (firstElement[1] - column).abs();
         if (!(horisontalDistance == 0 && verticalDistance == 1 ||
                 verticalDistance == 0 && horisontalDistance == 1) ||
-            pair[0] == [row, column]) {
+            firstElement == [row, column]) {
           gameRef.resetPair();
-          return;
+          if (listEquals(firstElement, [row, column])) {
+            return;
+          }
         }
       }
       isTapped = true;
