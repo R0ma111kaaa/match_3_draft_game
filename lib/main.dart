@@ -20,7 +20,15 @@ class MyGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     camera.viewfinder.anchor = Anchor.topLeft;
-    grid = world.children.whereType<GridComponent>().first;
+    final gridComponents = world.children.whereType<GridComponent>();
+    print(
+      "World children: ${world.children.map((c) => c.runtimeType).toList()}",
+    );
+    print("Grid components found: ${gridComponents.length}");
+    if (gridComponents.isEmpty) {
+      throw Exception("No GridComponent found in world. Check MyWorld.onLoad.");
+    }
+    grid = gridComponents.first;
   }
 
   var pair = [];
@@ -42,8 +50,7 @@ class MyGame extends FlameGame {
     Vector2 pos1 = tile1.getPosition();
     Vector2 pos2 = tile2.getPosition();
 
-    List<List<int>> filledBlocks = getFilledBlocks();
-    print("empty list: ${filledBlocks.isEmpty}");
+    List<List<int>> filledBlocks = getFilledBlocks(pair);
 
     // Перемещаем тайлы
     tile1.add(
@@ -96,7 +103,7 @@ class MyGame extends FlameGame {
   }
 
   // Возвращает список удаляемых блоков
-  List<List<int>> getFilledBlocks() {
+  List<List<int>> getFilledBlocks(List pair) {
     return [];
   }
 }
