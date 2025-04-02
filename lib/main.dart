@@ -47,7 +47,7 @@ class MyGame extends FlameGame {
     }
   }
 
-  void switchPair() {
+  void switchPair() async {
     tapIsAvailible = false;
 
     final grid = world.children.whereType<GridComponent>().first;
@@ -63,32 +63,7 @@ class MyGame extends FlameGame {
     Vector2 pos1 = tile1.getPosition();
     Vector2 pos2 = tile2.getPosition();
 
-    List<List<TileComponent>> filledTilesMatrix = getFilledTilesMatrix();
-    List<TileComponent> filledTiles =
-        filledTilesMatrix.expand((x) => x).toSet().toList();
-
-    for (int i = 0; i < filledTiles.length; i++) {
-      TileComponent tile = filledTiles[i];
-      tile.add(
-        SequenceEffect([
-          SizeEffect.to(
-            Vector2.zero(),
-            EffectController(
-              duration: Constants.resizeDuration,
-              onMax: () => tile.changeColor(),
-              startDelay: Constants.switchDuration,
-            ),
-          ),
-          SizeEffect.to(
-            Vector2.all(tile.tileSize),
-            EffectController(duration: Constants.resizeDuration),
-          ),
-        ]),
-      );
-    }
-    if (filledTilesMatrix.isEmpty) {
-      switchPairInTheGrid(grid);
-    }
+    List<List<TileComponent>> combinations = getFilledTilesCombinations();
 
     // Перемещаем тайлы
     tile1.add(
@@ -97,15 +72,12 @@ class MyGame extends FlameGame {
           pos2,
           EffectController(
             duration: Constants.switchDuration,
-            alternate: filledTilesMatrix.isEmpty ? true : false,
+            alternate: combinations.isEmpty ? true : false,
           ),
         ),
         SizeEffect.to(
           Vector2.all(tile2.tileSize),
-          EffectController(
-            duration: Constants.resizeDuration,
-            onMax: () => tapIsAvailible = true,
-          ),
+          EffectController(duration: Constants.resizeDuration),
         ),
       ]),
     );
@@ -116,7 +88,7 @@ class MyGame extends FlameGame {
           pos1,
           EffectController(
             duration: Constants.switchDuration,
-            alternate: filledTilesMatrix.isEmpty ? true : false,
+            alternate: combinations.isEmpty ? true : false,
           ),
         ),
         SizeEffect.to(
@@ -126,7 +98,43 @@ class MyGame extends FlameGame {
       ]),
     );
 
+    if (combinations.isEmpty) {
+      switchPairInTheGrid(grid);
+    }
+
+    bool hasMatches = true;
+    while (hasMatches) {
+      if (combinations.isEmpty) {
+        hasMatches = false;
+        continue;
+      }
+      Set<TileComponent> filledTiles = combinations.expand((x) => x).toSet();
+      for (TileComponent tile in filledTiles) {
+        tile.add(
+          SequenceEffect([
+            SizeEffect.to(
+              Vector2.zero(),
+              EffectController(
+                duration: Constants.resizeDuration,
+                onMax: () => tile.changeColor(),
+                startDelay: Constants.switchDuration,
+              ),
+            ),
+            SizeEffect.to(
+              Vector2.all(tile.tileSize),
+              EffectController(duration: Constants.resizeDuration),
+            ),
+          ]),
+        );
+      }
+      await Future.delayed(
+        Duration(milliseconds: (Constants.resizeDuration * 3 * 1000).toInt()),
+      );
+      combinations = getFilledTilesCombinations();
+    }
+
     pair.clear();
+    tapIsAvailible = true;
   }
 
   void resetPair() {
@@ -145,7 +153,7 @@ class MyGame extends FlameGame {
   }
 
   // Возвращает список удаляемых блоков
-  List<List<TileComponent>> getFilledTilesMatrix() {
+  List<List<TileComponent>> getFilledTilesCombinations() {
     List<List<TileComponent>> transposedMatrix = List.generate(
       Constants.columnCount,
       (_) => [],
