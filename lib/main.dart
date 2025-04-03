@@ -20,6 +20,26 @@ class MyColors {
   static final lenght = colorList.length;
 }
 
+class MySprites {
+  static String box = "box.png";
+  static String burger = "burger.png";
+  static String coldFace = "cold_face.png";
+  static String duckMrBim = "duck_mr_bim.png";
+  static String gift = "gift.png";
+  static String grandpa = "grandpa.png";
+  static String skeleton = "skeleton.png";
+
+  static final List<String> sprites = [
+    box,
+    burger,
+    coldFace,
+    duckMrBim,
+    gift,
+    grandpa,
+  ];
+  static final lenght = sprites.length;
+}
+
 class Constants {
   static int rowCount = 6;
   static int columnCount = 6;
@@ -116,7 +136,7 @@ class MyGame extends FlameGame {
               Vector2.zero(),
               EffectController(
                 duration: Constants.resizeDuration,
-                onMax: () => tile.changeColor(),
+                onMax: () => tile.changeSprite(),
                 startDelay: Constants.switchDuration,
               ),
             ),
@@ -167,7 +187,8 @@ class MyGame extends FlameGame {
       for (int j = 0; j < Constants.columnCount; j++) {
         TileComponent curElement = grid.tiles[i][j];
 
-        if (filledRow.isEmpty || filledRow.last.color == curElement.color) {
+        if (filledRow.isEmpty ||
+            filledRow.last.spriteName == curElement.spriteName) {
           filledRow.add(curElement);
         } else {
           if (filledRow.length >= 3) {
@@ -189,7 +210,8 @@ class MyGame extends FlameGame {
       for (int j = 0; j < Constants.rowCount; j++) {
         TileComponent curElement = transposedMatrix[i][j];
 
-        if (filledRow.isEmpty || filledRow.last.color == curElement.color) {
+        if (filledRow.isEmpty ||
+            filledRow.last.spriteName == curElement.spriteName) {
           filledRow.add(curElement);
         } else {
           if (filledRow.length >= 3) {
@@ -283,14 +305,14 @@ class GridComponent extends PositionComponent {
   }
 }
 
-class TileComponent extends RectangleComponent
+class TileComponent extends SpriteComponent
     with TapCallbacks, HasGameRef<MyGame> {
   int row;
   int column;
   double tileSize;
   Random random;
   bool isTapped = false;
-  late Color color;
+  late String spriteName;
 
   TileComponent({
     required this.row,
@@ -302,7 +324,7 @@ class TileComponent extends RectangleComponent
   Vector2 getPosition() => position;
 
   @override
-  void onLoad() {
+  Future<void> onLoad() async {
     anchor = Anchor.center;
     size = Vector2.all(tileSize);
     position = Vector2(
@@ -310,12 +332,12 @@ class TileComponent extends RectangleComponent
       row * (tileSize + Constants.spaceBetweenTiles) + tileSize / 2,
     );
     paint = Paint();
-    changeColor();
+    changeSprite();
   }
 
-  void changeColor() {
-    color = MyColors.colorList[random.nextInt(MyColors.lenght)];
-    paint.color = color;
+  void changeSprite() async {
+    spriteName = MySprites.sprites[random.nextInt(MySprites.lenght)];
+    sprite = await Sprite.load(spriteName);
   }
 
   @override

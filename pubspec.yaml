@@ -54,6 +54,14 @@ dev_dependencies:
 flutter:
   assets:
     - assets/images/player.png
+    - assets/images/dimond.png
+    - assets/images/box.png
+    - assets/images/burger.png
+    - assets/images/cold_face.png
+    - assets/images/duck_mr_bim.png
+    - assets/images/gift.png
+    - assets/images/grandpa.png
+    - assets/images/skeleton.png
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
