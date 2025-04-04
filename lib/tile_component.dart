@@ -104,10 +104,7 @@ class TileComponent extends SpriteComponent
         SizeEffect.to(
           Vector2.all(tileSize * 0.9),
           EffectController(
-            duration:
-                gameRef.pair.isNotEmpty
-                    ? Constants.resizeDuration / 2
-                    : Constants.resizeDuration,
+            duration: Constants.resizeDuration,
             onMax: () => isTapped = false,
           ),
         ),

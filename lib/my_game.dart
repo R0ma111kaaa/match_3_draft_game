@@ -4,9 +4,10 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Route;
 import 'package:platformer/grid_component.dart';
 import 'package:platformer/main.dart';
+import 'package:platformer/menu.dart';
 import 'package:platformer/my_world.dart';
 import 'package:platformer/tile_component.dart';
 
@@ -16,9 +17,22 @@ class MyGame extends FlameGame {
   bool tapIsAvailible = true;
   Random random = Random();
 
+  late final RouterComponent router;
+
   @override
   Future<void> onLoad() async {
     camera.viewfinder.anchor = Anchor.topLeft;
+    add(
+      router = RouterComponent(
+        routes: {
+          "menu": Route(MyMenu.new),
+          "world": WorldRoute(MyWorld.new),
+          // "pause": Route(),
+          // "settings": Route()
+        },
+        initialRoute: "menu",
+      ),
+    );
   }
 
   var pair = [];
@@ -50,7 +64,7 @@ class MyGame extends FlameGame {
     // меняем 2 тайла между собой
     tile1!.addAll([
       SizeEffect.to(
-        Vector2.all((world as MyWorld).tileSize),
+        Vector2.all(grid.tileSize),
         EffectController(duration: Constants.resizeDuration),
       ),
       MoveToEffect(
@@ -65,7 +79,7 @@ class MyGame extends FlameGame {
 
     tile2!.addAll([
       SizeEffect.to(
-        Vector2.all((world as MyWorld).tileSize),
+        Vector2.all(grid.tileSize),
         EffectController(duration: Constants.resizeDuration),
       ),
       MoveToEffect(
@@ -82,74 +96,85 @@ class MyGame extends FlameGame {
       switchPairInTheGrid(grid);
     } else {
       await Future.delayed(
-        Duration(milliseconds: (Constants.switchDuration * 1 * 1000).toInt()),
+        Duration(milliseconds: (Constants.switchDuration * 1000).toInt()),
       );
+      bool hasMatch = true;
+      while (hasMatch) {
+        Set<TileComponent> filledTiles = combinations.expand((x) => x).toSet();
 
-      Set<TileComponent> filledTiles = combinations.expand((x) => x).toSet();
+        // удаляем тавсе тайлы в совпадениях
+        for (TileComponent tile in filledTiles) {
+          grid.tiles[tile.row][tile.column] = null;
+          tile.dropFromTheGrid();
+        }
 
-      // удаляем тавсе тайлы в совпадениях
-      for (TileComponent tile in filledTiles) {
-        grid.tiles[tile.row][tile.column] = null;
-        tile.dropFromTheGrid();
-      }
-
-      // Опускаем существующие тайлы
-      for (int j = 0; j < Constants.columnCount; j++) {
-        for (int i = Constants.rowCount - 1; i > 0; i--) {
-          TileComponent? tile = grid.tiles[i][j];
-          if (tile == null) {
-            TileComponent? higherTile = findFirstHigherTile(grid.tiles, i, j);
-            if (higherTile != null) {
-              grid.tiles[i][j] = higherTile;
-              grid.tiles[higherTile.row][higherTile.column] = null;
-              higherTile.add(
-                MoveToEffect(
-                  grid.getPosition(i, j),
-                  EffectController(
-                    duration: Constants.slideAnimationTime,
-                    curve: Curves.easeInOutBack,
+        // Опускаем существующие тайлы
+        for (int j = 0; j < Constants.columnCount; j++) {
+          for (int i = Constants.rowCount - 1; i > 0; i--) {
+            TileComponent? tile = grid.tiles[i][j];
+            if (tile == null) {
+              TileComponent? higherTile = findFirstHigherTile(grid.tiles, i, j);
+              if (higherTile != null) {
+                grid.tiles[i][j] = higherTile;
+                grid.tiles[higherTile.row][higherTile.column] = null;
+                higherTile.add(
+                  MoveToEffect(
+                    grid.getPosition(i, j),
+                    EffectController(
+                      duration: Constants.slideAnimationTime,
+                      curve: Curves.easeInOutBack,
+                    ),
                   ),
-                ),
-              );
-              higherTile.row = i;
-              higherTile.column = j;
+                );
+                higherTile.row = i;
+                higherTile.column = j;
+              }
             }
           }
         }
-      }
 
-      // Заполняем пустые тайлы
-      for (int j = 0; j < Constants.columnCount; j++) {
-        for (int i = Constants.rowCount - 1; i >= 0; i--) {
-          TileComponent? tile = grid.tiles[i][j];
-          if (tile == null) {
-            Vector2 targetPosition = grid.getPosition(i, j);
-            TileComponent newTile = TileComponent(
-              row: i,
-              column: j,
-              tileSize: grid.tileSize,
-              random: random,
-              position: Vector2(
-                targetPosition.x,
-                -(size.y - grid.size.y) / 2 - grid.tileSize,
-              ),
-            )..add(
-              MoveToEffect(
-                targetPosition,
-                EffectController(
-                  duration: 1,
-                  curve: Curves.easeIn,
-                  startDelay: j * 0.1,
+        // Заполняем пустые тайлы
+        for (int j = 0; j < Constants.columnCount; j++) {
+          for (int i = Constants.rowCount - 1; i >= 0; i--) {
+            TileComponent? tile = grid.tiles[i][j];
+            if (tile == null) {
+              Vector2 targetPosition = grid.getPosition(i, j);
+              TileComponent newTile = TileComponent(
+                row: i,
+                column: j,
+                tileSize: grid.tileSize,
+                random: random,
+                position: Vector2(
+                  targetPosition.x,
+                  -(size.y - grid.size.y) / 2 - grid.tileSize,
                 ),
-              ),
-            );
-            grid.tiles[i][j] = newTile;
-            grid.add(newTile);
+              )..add(
+                MoveToEffect(
+                  targetPosition,
+                  EffectController(
+                    duration: 1,
+                    curve: Curves.easeIn,
+                    startDelay: j * 0.1,
+                  ),
+                ),
+              );
+              grid.tiles[i][j] = newTile;
+              grid.add(newTile);
+            }
           }
+        }
+        combinations = getFilledTilesCombinations(grid);
+        if (combinations.isEmpty) {
+          hasMatch = false;
+        } else {
+          await Future.delayed(
+            Duration(
+              milliseconds: (Constants.switchDuration * 5 * 1000).toInt(),
+            ),
+          );
         }
       }
     }
-
     pair.clear();
     tapIsAvailible = true;
   }

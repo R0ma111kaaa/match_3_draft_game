@@ -37,8 +37,8 @@ class MySprites {
 }
 
 class Constants {
-  static int rowCount = 5;
-  static int columnCount = 5;
+  static int rowCount = 7;
+  static int columnCount = 7;
   static int spaceBetweenTiles = 10;
   static double fieldPadding = 10;
   static double switchDuration = 0.4;
