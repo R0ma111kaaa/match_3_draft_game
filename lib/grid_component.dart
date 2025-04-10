@@ -21,7 +21,7 @@ class GridComponent extends PositionComponent {
 
   @override
   void onLoad() async {
-    super.anchor = Anchor.center;
+    super.anchor = Anchor.topLeft;
     tiles = List<List<TileComponent?>>.generate(
       rowCount,
       (i) => List<TileComponent?>.generate(columnCount, (j) {

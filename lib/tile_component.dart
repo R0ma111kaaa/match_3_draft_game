@@ -7,9 +7,10 @@ import 'package:flame/events.dart';
 import 'package:flutter/foundation.dart';
 import 'package:platformer/main.dart';
 import 'package:platformer/my_game.dart';
+import 'package:platformer/my_world.dart';
 
 class TileComponent extends SpriteComponent
-    with TapCallbacks, HasGameRef<MyGame> {
+    with TapCallbacks, HasWorldReference<MyWorld>, HasGameRef<MyGame> {
   int row;
   int column;
   double tileSize;
@@ -35,7 +36,8 @@ class TileComponent extends SpriteComponent
   Future<void> onLoad() async {
     anchor = Anchor.center;
     size = Vector2.all(tileSize);
-    changeSprite();
+    spriteName = MySprites.sprites[random.nextInt(MySprites.lenght)];
+    sprite = await Sprite.load(spriteName);
   }
 
   @override
@@ -56,19 +58,12 @@ class TileComponent extends SpriteComponent
     asseleration = 0;
   }
 
-  void changeSprite() async {
-    spriteName = MySprites.sprites[random.nextInt(MySprites.lenght)];
-    sprite = await Sprite.load(spriteName);
-  }
-
   void dropFromTheGrid() {
     priority = Constants.droppingTilesPriority;
-    int xOffcet =
-        -(Constants.droppingTilesXRange / 2).toInt() +
-        random.nextInt(Constants.droppingTilesXRange);
+    double targetXCord = random.nextInt(gameRef.size.x.toInt() + 500) - 250;
     addAll([
-      MoveByEffect(
-        Vector2(xOffcet.toDouble(), 0),
+      MoveToEffect(
+        Vector2(targetXCord, 0),
         EffectController(duration: 2),
         onComplete: () => removeFromParent(),
       ),
@@ -77,15 +72,15 @@ class TileComponent extends SpriteComponent
         EffectController(duration: Constants.droppingAnimationTime),
       ),
     ]);
-    speed = Constants.droppingAnimationTime;
+    speed = Constants.droppingTilesStartSpeed;
     asseleration = Constants.acceleration;
-    this.targetYPosition = gameRef.size.y * 2;
+    targetYPosition = gameRef.size.y * 2;
   }
 
   @override
   void onTapDown(TapDownEvent event) {
-    var pair = gameRef.pair;
-    if (!isTapped && gameRef.tapIsAvailible) {
+    var pair = world.pair;
+    if (!isTapped && world.tapIsAvailible) {
       if (pair.isNotEmpty) {
         dynamic firstElement = pair[0];
         int verticalDistance = (firstElement[0] - row).abs();
@@ -93,7 +88,7 @@ class TileComponent extends SpriteComponent
         if (!(horisontalDistance == 0 && verticalDistance == 1 ||
                 verticalDistance == 0 && horisontalDistance == 1) ||
             listEquals(firstElement, [row, column])) {
-          gameRef.resetPair();
+          world.resetPair();
           if (listEquals(firstElement, [row, column])) {
             return;
           }
@@ -109,7 +104,7 @@ class TileComponent extends SpriteComponent
           ),
         ),
       );
-      gameRef.addTileToPair(row, column);
+      world.addTileToPair(row, column);
     }
   }
 }
